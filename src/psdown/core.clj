@@ -95,7 +95,7 @@
 
 ;; "var el=getElementById('ipreview'); el.src='/_sh/11/1141_1.jpg'; el.setAttribute('idx',1);" -> /_sh/11/1141_1.jpg
 (defn extract-image-url [str]
-  (let [search-result (re-find (re-pattern "/(_sh.*?)';") str)]
+  (let [search-result (re-find (re-pattern "(/_sh.*?)';") str)]
     (second search-result)))
 
 (defn get-product-images [cont]
