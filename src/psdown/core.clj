@@ -111,10 +111,9 @@
         articul (-> title-block second :content second :content first)
         category (last (extract-all cont is-breadcrumb #(-> % :content first :content first :content first)))
         images (get-product-images cont)]
-    {:name name :articul articul :category category :images images}))
+    {:url url :name name :articul articul :category category :images images}))
 
 (defn extract-category-products [url]
   (let [purls (extract-product-urls url)
         pdata (map get-product-data purls)]
     pdata))
-;;BUG:main url
