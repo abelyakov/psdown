@@ -9,11 +9,7 @@
   [& args]
   (println "Hello, World!"))
 
-;div id goods_cont
-;
-
 (def url "http://pro-sport-russia.com/shop/t-shirt/dzjudo")
-(defn get-content [url] ((client/get url) :body))
 
 (defn get-dom-as-data [url]
   (-> url
@@ -28,17 +24,6 @@
        (= (:type x) :element)
        (= "goods_cont" (get-in x [:attrs :id]))))
 
-
-
-(defn extract-goods-cont [content]
-  (let [result (atom [])]
-    (w/postwalk
-      #(let [goods-cont (is-goods-cont %)]
-        (if goods-cont
-          (swap! result conj %)
-          %)) content)
-    (first @result)))
-
 (defn is-product-url [x]
   (and (map? x)
        (= (:tag x) :a)
@@ -47,14 +32,28 @@
 ;for each tree node:
 ; if (check-fun node) returns true
 ; add (apply-funct node) to result
-(defn extract-all [content check-func apply-func]
+(defn extract-all [cont check-func apply-func]
   (let [result (atom [])]
     (w/prewalk
       #(let [suitable (check-func %)]
         (when suitable (swap! result conj (apply-func %)))
         %)
-      content)
+      cont)
     @result))
+
+(defn extract-first [cont check-func apply-func]
+  (let [result (atom [])]
+    (w/postwalk
+      #(let [suitable (check-func %)]
+        (if suitable
+          (swap! result conj (apply-func %))
+          %))
+      cont)
+    (first @result)))
+
+(defn extract-goods-cont [cont]
+  (extract-first cont is-goods-cont identity))
+
 
 ;from url to ${product_url1 product_url2 product_url3}
 (defn extract-product-urls [url]
@@ -63,8 +62,45 @@
         product-urls (into #{} (extract-all goods-cont is-product-url #(get-in % [:attrs :href])))]
     product-urls))
 
-(def purl (first (extract-product-urls url)))
 
-(defn get-product-data [url]
+
+(def purl (-> url extract-product-urls first))
+
+(defn get-product-content [url]
   (let [full-url (str "http://www.pro-sport-russia.com" url)]
     (get-dom-as-data full-url)))
+
+(def purl-content (get-product-content purl))
+
+(defn is-header [x]
+  (and
+    (map? x)
+    (= (:tag x) :h1)))
+
+(defn is-breadcrumb [x]
+  (and
+    (map? x)
+    (= (get-in x [:attrs :itemtype]) "http://data-vocabulary.org/Breadcrumb")))
+
+
+(defn get-product-images [cont]
+  (let [nobr (extract-first cont #(= (:tag %) :nobr) #(:content %))
+        images (->> nobr
+                     (filter map?)
+                     (map :attrs)
+                     (map #(select-keys % [:alt :src])))]
+    images))
+
+(defn get-product-data [url]
+  (let [cont (get-product-content url)
+        title-block (extract-first cont is-header #(:content %))
+        name (first title-block)
+        articul (-> title-block second :content second :content first)
+        category (last (extract-all cont is-breadcrumb #(-> % :content first :content first :content first)))
+        images (get-product-images cont)]
+    {:name name :articul articul :category category :images images}))
+
+(defn extract-category-products [url]
+  (let [purls (extract-product-urls url)
+        pdata (map get-product-data purls)]
+    pdata))
