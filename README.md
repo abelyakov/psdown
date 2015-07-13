@@ -1,6 +1,6 @@
 # psdown
 
-FIXME: description
+Temprorary tool to load product data from old pro-sport site and upload it to new one.
 
 ## Installation
 
