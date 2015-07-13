@@ -82,7 +82,7 @@
     (map? x)
     (= (get-in x [:attrs :itemtype]) "http://data-vocabulary.org/Breadcrumb")))
 
-;;не те урлы!!!
+
 (defn get-product-images-tumbnails [cont]
   (let [nobr (extract-first cont #(= (:tag %) :nobr) #(:content %))
         images (->> nobr
@@ -98,10 +98,20 @@
   (let [search-result (re-find (re-pattern "(/_sh.*?)';") str)]
     (second search-result)))
 
+(defn is-main-image [x]
+  (let [str (:onclick x)]
+    (when (instance? String str) (.contains str "_bldCont1"))))
+
+(defn get-main-image [cont]
+  (extract-first cont is-main-image #(-> % :src)))
+
 (defn get-product-images [cont]
   (let [nobr (extract-first cont #(= (:tag %) :nobr) #(:content %))
-        images (extract-all nobr #(= "gphoto" (:class %)) #(-> % :onclick extract-image-url))]
-    images))
+        images (extract-all nobr #(= "gphoto" (:class %)) #(-> % :onclick extract-image-url))
+        main-image (get-main-image cont)]
+    (if (some #{main-image} images)
+      images
+      (conj images main-image))))
 
 
 (defn get-product-data [url]
@@ -117,3 +127,4 @@
   (let [purls (extract-product-urls url)
         pdata (map get-product-data purls)]
     pdata))
+;(pprint (map :images res))
