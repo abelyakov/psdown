@@ -82,14 +82,27 @@
     (map? x)
     (= (get-in x [:attrs :itemtype]) "http://data-vocabulary.org/Breadcrumb")))
 
+;;не те урлы!!!
+(defn get-product-images-tumbnails [cont]
+  (let [nobr (extract-first cont #(= (:tag %) :nobr) #(:content %))
+        images (->> nobr
+                    (filter map?)
+                    (filter not-empty)
+                    (map :attrs)
+                    (map #(select-keys % [:alt :src]))
+                    first)]
+    images))
+
+;; "var el=getElementById('ipreview'); el.src='/_sh/11/1141_1.jpg'; el.setAttribute('idx',1);" -> /_sh/11/1141_1.jpg
+(defn extract-image-url [str]
+  (let [search-result (re-find (re-pattern "/(_sh.*?)';") str)]
+    (second search-result)))
 
 (defn get-product-images [cont]
   (let [nobr (extract-first cont #(= (:tag %) :nobr) #(:content %))
-        images (->> nobr
-                     (filter map?)
-                     (map :attrs)
-                     (map #(select-keys % [:alt :src])))]
+        images (extract-all nobr #(= "gphoto" (:class %)) #(-> % :onclick extract-image-url))]
     images))
+
 
 (defn get-product-data [url]
   (let [cont (get-product-content url)
@@ -104,3 +117,4 @@
   (let [purls (extract-product-urls url)
         pdata (map get-product-data purls)]
     pdata))
+;;BUG:main url
